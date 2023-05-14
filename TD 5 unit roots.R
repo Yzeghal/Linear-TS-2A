@@ -5,6 +5,9 @@ filename = "fileTP5.csv"
 path = paste("C:/Users/tayoy/Documents/ENSAE/S2/Linear Time Series/TD",filename, sep = "/")
 d = read.csv(file = path, sep = ';')
 
+# In this script, we study the time series of a rate spread.
+# We test it for unit roots, fit ARIMAs, and discuss models.
+
 #Q1 File reading
 dates_char =d$dates
 dates_char[1];dates_char[length(dates_char)]
@@ -37,19 +40,37 @@ Ljung_Box<-function(s,maxlag=10, df=1){
   res = cbind(indexes, p_val)
 }
 #Runs all ADF tests untill  residuals are tested to be white noise
-ADF_finder<-function(s, maxlag = 24){
+ADF_finder<-function(s, maxlag = 24, type = "ct"){
   reject =TRUE
   i = 0 #lag tested start at 0 : random walk + trend
   while(reject==TRUE &i<=maxlag) {
-    adf = adfTest(s,lags = i, type = "ct")
+    adf = adfTest(s,lags = i, type = type)
     res = adf@test$lm$residuals
-    lb = Ljung_Box(res, maxlag = 24, df = i+3) #nb of df is nb of regressors in ECM fitting
+    dfs=c("ct"=3,"c"=2, "nc" = 1)
+    delta_df = dfs[type]
+    lb = Ljung_Box(res, maxlag = 24, df = i+delta_df) #nb of df is nb of regressors in ECM fitting
     reject = sum(lb[,2]<0.05,na.rm=TRUE)>0 #we decide to reject hypothesis at 5%
     i=i+1
   }
-  if (reject == TRUE) {paste("NO WHITE NOISE UNTILL ", maxlag, lags)#never rejected 
-  #To be continued 
+  if (reject == TRUE)
+    {paste("NO WHITE NOISE UNTILL ", maxlag, lags)#never rejected
   }
-  
+  else{
+    return(list(lags = i-1, adf = adf, p_val = adf@test$p.value))
+  }
 }
-ADF_finder(spread)
+WVadf=ADF_finder(spread)
+WVadf # cannot reject the unit root hypothesis 
+d_ct=ADF_finder(dspread, type = 'ct') #unit root hypothesis is rejected
+d_c=ADF_finder(dspread, type = 'c') #H0 rejected too
+d_nc=ADF_finder(dspread, type = 'nc') #H0 rejected too 
+#"nc" model is kept since 2 models above give constant and trend coeffs close to 0
+
+#Q4 We will work on dspread
+par(mfrow=c(1,2))
+acf(dspread)
+pacf(dspread)
+#we will fit ARMA(p,q) with p,q<=3
+
+#TO BE CONTINUED
+
